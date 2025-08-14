@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -43,7 +43,8 @@ export default function SettingsScreen() {
   };
 
   const toggleTheme = () => {
-    saveUserData({ theme: userData.theme === 'light' ? 'dark' : 'light' });
+    const next = userData.theme === 'light' ? 'dark' : 'light';
+    saveUserData({ theme: next, themeMode: 'light' === next ? 'light' : 'dark' });
   };
 
   const openScheduleEditor = () => {
@@ -190,25 +191,43 @@ export default function SettingsScreen() {
           {/* Appearance */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              {userData.theme === 'light' ? (
+              {userData.themeMode === 'light' ? (
                 <Sun size={20} color={colors.warning} />
-              ) : (
+              ) : userData.themeMode === 'dark' ? (
                 <Moon size={20} color={colors.secondary} />
+              ) : (
+                <Zap size={20} color={colors.primary} />
               )}
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
             </View>
 
             <View style={[styles.settingItem, { backgroundColor: colors.glass.background, borderColor: colors.border, ...(userData.theme === 'light' ? { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6 } : {}) }]}>
               <View style={styles.settingInfo}>
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Dark mode</Text>
-                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>Switch between light and dark themes</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Theme</Text>
+                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>Follow system or set light/dark</Text>
               </View>
-              <Switch
-                value={userData.theme === 'dark'}
-                onValueChange={toggleTheme}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.white}
-              />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {([
+                  { key: 'system', label: 'Auto' },
+                  { key: 'light', label: 'Light' },
+                  { key: 'dark', label: 'Dark' },
+                ] as const).map(opt => (
+                  <TouchableOpacity
+                    key={opt.key}
+                    onPress={() => saveUserData({ themeMode: opt.key, theme: opt.key === 'system' ? userData.theme : (opt.key as 'light' | 'dark') })}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: userData.themeMode === opt.key ? colors.primary : colors.border,
+                      backgroundColor: userData.themeMode === opt.key ? colors.primary + '20' : 'transparent',
+                    }}
+                  >
+                    <Text style={{ color: userData.themeMode === opt.key ? colors.primary : colors.textSecondary, fontWeight: '600' }}>{opt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           </View>
 

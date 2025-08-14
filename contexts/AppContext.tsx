@@ -2,7 +2,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, Appearance, ColorSchemeName } from 'react-native';
 import { darkColors, lightColors } from '@/constants/colors';
 
 export interface Task {
@@ -53,6 +53,7 @@ export interface UserData {
   energyLevel: 'low' | 'medium' | 'high';
   importantTasks: string[];
   theme: 'light' | 'dark';
+  themeMode: 'system' | 'light' | 'dark';
   bodyDoublingActive: boolean;
   brainDumpHistory: Record<string, string>;
   preferences: {
@@ -94,7 +95,8 @@ const defaultUserData: UserData = {
   todaysMood: null,
   energyLevel: 'medium',
   importantTasks: [],
-  theme: 'dark',
+  theme: (Appearance.getColorScheme() as 'light' | 'dark') ?? 'light',
+  themeMode: 'system',
   bodyDoublingActive: false,
   brainDumpHistory: {},
   preferences: {
@@ -120,19 +122,19 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [taskSuggestions, setTaskSuggestions] = useState<TaskSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(0);
+  const [systemScheme, setSystemScheme] = useState<'light' | 'dark'>((Appearance.getColorScheme() as 'light' | 'dark') ?? 'light');
+
+  // Determine effective theme from mode + system
+  const effectiveTheme: 'light' | 'dark' = userData.themeMode === 'system' ? systemScheme : userData.theme;
 
   // Get current theme colors with platform-specific handling
   const colors = useMemo(() => {
-    const baseColors = userData.theme === 'light' ? lightColors : darkColors;
-    
-    // Force color refresh on mobile to prevent caching issues
+    const baseColors = effectiveTheme === 'light' ? lightColors : darkColors;
     if (Platform.OS !== 'web') {
-      // Create a new object to force re-render, include forceRefresh to trigger updates
       return { ...baseColors, _refresh: forceRefresh };
     }
-    
     return baseColors;
-  }, [userData.theme, forceRefresh]);
+  }, [effectiveTheme, forceRefresh]);
 
   const loadData = useCallback(async () => {
     try {
@@ -140,8 +142,14 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const savedTasks = await AsyncStorage.getItem('adhd-planner-tasks');
 
       if (savedUserData) {
-        const parsed = JSON.parse(savedUserData);
-        setUserData(parsed);
+        const parsed: UserData & Partial<{ themeMode: 'system' | 'light' | 'dark' }> = JSON.parse(savedUserData);
+        if (!parsed.themeMode) {
+          parsed.themeMode = 'system';
+        }
+        if (parsed.themeMode === 'system') {
+          parsed.theme = (Appearance.getColorScheme() as 'light' | 'dark') ?? 'light';
+        }
+        setUserData(parsed as UserData);
 
         if (savedTasks) {
           setTasks(JSON.parse(savedTasks));
@@ -181,16 +189,38 @@ export const [AppProvider, useApp] = createContextHook(() => {
     loadData();
   }, [loadData]);
 
+  // Sync theme with system when in system mode
+  useEffect(() => {
+    if (userData.themeMode !== 'system') return;
+    const listener = ({ colorScheme }: { colorScheme: ColorSchemeName }) => {
+      const scheme = (colorScheme as 'light' | 'dark') ?? 'light';
+      setSystemScheme(scheme);
+      setUserData(prev => ({ ...prev, theme: scheme }));
+    };
+    const current = Appearance.getColorScheme();
+    setSystemScheme((current as 'light' | 'dark') ?? 'light');
+    const sub = Appearance.addChangeListener(listener);
+    return () => {
+      if (sub && typeof (sub as any).remove === 'function') {
+        (sub as any).remove();
+      }
+    };
+  }, [userData.themeMode]);
+
   // Save user data
   const saveUserData = useCallback(async (newData: Partial<UserData>) => {
-    const updated = { ...userData, ...newData };
+    const updated = { ...userData, ...newData } as UserData;
+
+    // If switching to system mode, align theme immediately without persisting system changes repeatedly
+    if (newData.themeMode === 'system') {
+      updated.theme = systemScheme;
+    }
+
     setUserData(updated);
     
     try {
       await AsyncStorage.setItem('adhd-planner-data', JSON.stringify(updated));
-      
-      // Force a complete refresh when theme changes on mobile
-      if (Platform.OS !== 'web' && newData.theme) {
+      if (Platform.OS !== 'web' && (newData.theme || newData.themeMode)) {
         setTimeout(() => {
           setForceRefresh(prev => prev + 1);
         }, 100);
@@ -198,7 +228,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } catch (error) {
       console.error('Save failed:', error);
     }
-  }, [userData]);
+  }, [userData, systemScheme]);
 
   // Save tasks
   const saveTasks = useCallback(async (newTasks: Tasks) => {

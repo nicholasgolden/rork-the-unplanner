@@ -4,19 +4,20 @@ import React from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { Platform } from "react-native";
-import Colors from "@/constants/colors";
+import { useApp } from "@/contexts/AppContext";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { colors, userData } = useApp();
   
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: Platform.OS === 'ios' ? 'transparent' : Colors.glass.background,
-          borderTopColor: Colors.border,
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.glass.background,
+          borderTopColor: colors.border,
           borderTopWidth: Platform.OS === 'ios' ? 0 : 1,
           height: 84 + insets.bottom,
           paddingBottom: Math.max(12, insets.bottom),
@@ -28,7 +29,7 @@ export default function TabLayout() {
         tabBarBackground: () => Platform.OS === 'ios' ? (
           <BlurView
             intensity={80}
-            tint="systemUltraThinMaterialDark"
+            tint={userData.theme === 'dark' ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'}
             style={{
               position: 'absolute',
               top: 0,
