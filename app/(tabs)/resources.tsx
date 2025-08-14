@@ -469,8 +469,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 20,
-    paddingBottom: 6,
+    padding: 12,
+    paddingBottom: 0,
   },
   title: {
     fontSize: 28,
@@ -482,15 +482,15 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    marginBottom: 6,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderWidth: 1,
     gap: 12,
 
@@ -500,19 +500,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   categoriesContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     marginBottom: 0,
   },
   categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
     borderWidth: 1,
     marginRight: 8,
     gap: 6,
-    height: 32,
+    height: 28,
   },
   categoryText: {
     fontSize: 12,
@@ -522,13 +522,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   resourcesContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 0,
-    paddingBottom: 20,
+    paddingBottom: 16,
   },
   resourceCard: {
-    borderRadius: 16,
-    marginBottom: 12,
+    borderRadius: 18,
+    marginBottom: 10,
     borderWidth: 1,
     overflow: 'hidden',
 
@@ -536,15 +536,15 @@ const styles = StyleSheet.create({
   resourceHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: 16,
+    padding: 14,
   },
   resourceIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   resourceHeaderText: {
     flex: 1,
@@ -554,7 +554,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   playButton: {
     padding: 6,

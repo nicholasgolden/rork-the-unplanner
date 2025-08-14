@@ -1,4 +1,4 @@
-const ELECTRIC_BLUE = '#00A3FF';
+const ELECTRIC_BLUE = '#2997FF';
 
 const darkColors = {
   primary: ELECTRIC_BLUE,
@@ -8,18 +8,18 @@ const darkColors = {
   error: '#FF453A',
   background: '#0D0D0D',
   backgroundSecondary: '#1C1C1E',
-  cardBg: 'rgba(28, 28, 30, 0.6)',
+  cardBg: 'rgba(28, 28, 30, 0.5)',
   glass: {
     primary: 'rgba(0, 163, 255, 0.12)',
     secondary: 'rgba(191, 90, 242, 0.12)',
     tertiary: 'rgba(255, 255, 255, 0.04)',
-    background: 'rgba(28, 28, 30, 0.35)',
+    background: 'rgba(28, 28, 30, 0.18)',
     overlay: 'rgba(0, 0, 0, 0.3)',
   },
   text: '#FFFFFF',
   textSecondary: 'rgba(255, 255, 255, 0.8)',
   textTertiary: 'rgba(255, 255, 255, 0.6)',
-  border: 'rgba(255, 255, 255, 0.15)',
+  border: 'rgba(255, 255, 255, 0.12)',
   borderSecondary: 'rgba(255, 255, 255, 0.08)',
   white: '#FFFFFF',
   black: '#000000',
@@ -42,19 +42,19 @@ const lightColors = {
   error: '#FF3B30',
   background: '#F2F2F7',
   backgroundSecondary: '#FFFFFF',
-  cardBg: 'rgba(255, 255, 255, 0.9)',
+  cardBg: 'rgba(255, 255, 255, 0.85)',
   glass: {
     primary: 'rgba(0, 163, 255, 0.08)',
     secondary: 'rgba(175, 82, 222, 0.08)',
     tertiary: 'rgba(0, 0, 0, 0.03)',
-    background: 'rgba(255, 255, 255, 0.6)',
+    background: 'rgba(255, 255, 255, 0.4)',
     overlay: 'rgba(0, 0, 0, 0.08)',
   },
   text: '#000000',
   textSecondary: 'rgba(0, 0, 0, 0.8)',
   textTertiary: 'rgba(0, 0, 0, 0.6)',
-  border: 'rgba(0, 163, 255, 0.25)',
-  borderSecondary: 'rgba(0, 163, 255, 0.15)',
+  border: 'rgba(0, 163, 255, 0.2)',
+  borderSecondary: 'rgba(0, 163, 255, 0.12)',
   white: '#FFFFFF',
   black: '#000000',
   shadow: {
