@@ -69,7 +69,7 @@ export default function DailyCheckinScreen() {
                 <Target size={24} color={colors.white} />
               </LinearGradient>
               <Text style={[styles.goalTitle, { color: colors.text }]}>Work on a Goal Today?</Text>
-              <Text style={[styles.goalSubtitle, { color: colors.textSecondary }]}>Since you&apos;re feeling {selectedMood?.toLowerCase()}, would you like to make progress on one of your goals?</Text>
+              <Text style={[styles.goalSubtitle, { color: colors.textSecondary }]}>Since you&apos;re feeling {selectedMood?.toLowerCase() || 'good'}, would you like to make progress on one of your goals?</Text>
             </View>
             
             <ScrollView style={styles.goalsContainer} showsVerticalScrollIndicator={false}>
