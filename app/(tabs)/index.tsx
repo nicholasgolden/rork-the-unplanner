@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
   RefreshControl,
+  findNodeHandle,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -538,8 +539,14 @@ export default function TasksScreen() {
     if (!ref.current || !scrollRef.current) return;
 
     try {
+      const nodeHandle = findNodeHandle(scrollRef.current);
+      if (!nodeHandle) {
+        console.error('scrollToTimeBlock: no node handle');
+        return;
+      }
+
       ref.current.measureLayout(
-        scrollRef.current.getInnerViewNode() as unknown as number,
+        nodeHandle,
         (_x, y) => {
           console.log('scrollToTimeBlock', { timeBlock, y });
           scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
