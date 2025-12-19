@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { router } from 'expo-router';
 import {
   View,
   Text,
@@ -38,9 +39,18 @@ type TimeBlock = 'morning' | 'afternoon' | 'evening';
 
 export default function TasksScreen() {
   const insets = useSafeAreaInsets();
-  const { userData, tasks, addTask, toggleTaskComplete, updateTask, deleteTask, taskSuggestions, isWorkTime, colors } = useApp();
-  const [newTaskInputs, setNewTaskInputs] = useState({ morning: '', afternoon: '', evening: '' });
+  const { userData, tasks, addTask, toggleTaskComplete, updateTask, deleteTask, taskSuggestions, isWorkTime, colors, dismissSuggestionForToday } = useApp();
+  const [newTaskInputs, setNewTaskInputs] = useState<{ morning: string; afternoon: string; evening: string }>({ morning: '', afternoon: '', evening: '' });
   const [expandedTasks, setExpandedTasks] = useState<Record<number, boolean>>({});
+  const [expandedCompleted, setExpandedCompleted] = useState<Record<TimeBlock, boolean>>({
+    morning: false,
+    afternoon: false,
+    evening: false,
+  });
+  const scrollRef = useRef<ScrollView | null>(null);
+  const morningRef = useRef<View | null>(null);
+  const afternoonRef = useRef<View | null>(null);
+  const eveningRef = useRef<View | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -523,10 +533,35 @@ export default function TasksScreen() {
     }
   };
 
-  const handleAddSuggestion = (suggestion: any) => {
-    const timeBlock = suggestion.timeBlock === 'any' ? 'afternoon' : suggestion.timeBlock;
-    addTask(timeBlock as TimeBlock, suggestion.text, suggestion);
-  };
+  const scrollToTimeBlock = useCallback((timeBlock: TimeBlock) => {
+    const ref = timeBlock === 'morning' ? morningRef : timeBlock === 'afternoon' ? afternoonRef : eveningRef;
+    if (!ref.current || !scrollRef.current) return;
+
+    try {
+      ref.current.measureLayout(
+        scrollRef.current.getInnerViewNode() as unknown as number,
+        (_x, y) => {
+          console.log('scrollToTimeBlock', { timeBlock, y });
+          scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
+        },
+        () => {
+          console.error('scrollToTimeBlock measureLayout error');
+        }
+      );
+    } catch (e) {
+      console.error('scrollToTimeBlock error', e);
+    }
+  }, []);
+
+  const handleAddSuggestion = useCallback(async (suggestion: { timeBlock: string; text: string }) => {
+    const timeBlock = (suggestion.timeBlock === 'any' ? 'afternoon' : suggestion.timeBlock) as TimeBlock;
+    addTask(timeBlock, suggestion.text, suggestion as any);
+    await dismissSuggestionForToday(suggestion.text);
+
+    setTimeout(() => {
+      scrollToTimeBlock(timeBlock);
+    }, 80);
+  }, [addTask, dismissSuggestionForToday, scrollToTimeBlock]);
 
   const handleDeleteTask = (timeBlock: TimeBlock, taskId: number) => {
     Alert.alert(
@@ -544,14 +579,28 @@ export default function TasksScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
+  const isTodayIso = useCallback((iso?: string) => {
+    if (!iso) return false;
+    const todayKey = new Date().toISOString().split('T')[0];
+    return iso.startsWith(todayKey);
+  }, []);
+
   const renderTaskBlock = (timeBlock: TimeBlock) => {
     const config = timeBlockConfig[timeBlock];
     const blockTasks = tasks[timeBlock] || [];
+    const incompleteTasks = blockTasks.filter(t => !t.completed);
+    const completedTodayTasks = blockTasks.filter(t => t.completed && isTodayIso(t.completedAt));
+
     const completedCount = blockTasks.filter(t => t.completed).length;
     const progress = blockTasks.length > 0 ? (completedCount / blockTasks.length) * 100 : 0;
 
     return (
-      <View style={styles.taskBlock} key={timeBlock}>
+      <View
+        style={styles.taskBlock}
+        key={timeBlock}
+        ref={timeBlock === 'morning' ? morningRef : timeBlock === 'afternoon' ? afternoonRef : eveningRef}
+        testID={`task-block-${timeBlock}`}
+      >
         {Platform.OS === 'ios' ? (
           <BlurView
             intensity={60}
@@ -597,7 +646,7 @@ export default function TasksScreen() {
         )}
 
         <View style={styles.taskList}>
-          {blockTasks.map(task => {
+          {incompleteTasks.map(task => {
             const EnergyIcon = energyConfig[task.energy].icon;
             const isExpanded = expandedTasks[task.id];
 
@@ -842,6 +891,172 @@ export default function TasksScreen() {
             );
           })}
 
+          {completedTodayTasks.length > 0 && (
+            <View style={{ marginTop: 6 }}>
+              <TouchableOpacity
+                onPress={() => setExpandedCompleted(prev => ({ ...prev, [timeBlock]: !prev[timeBlock] }))}
+                activeOpacity={0.75}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.glass.background,
+                  marginBottom: 12,
+                }}
+                testID={`completed-toggle-${timeBlock}`}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <CheckCircle2 size={18} color={colors.success} strokeWidth={2.5} />
+                  <Text style={{ color: colors.text, fontWeight: '800', fontSize: 14 }}>Completed</Text>
+                  <View style={{
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 999,
+                    backgroundColor: `${colors.success}18`,
+                    borderWidth: 1,
+                    borderColor: `${colors.success}28`,
+                  }}>
+                    <Text style={{ color: colors.success, fontWeight: '800', fontSize: 12 }}>{completedTodayTasks.length}</Text>
+                  </View>
+                </View>
+                {expandedCompleted[timeBlock] ? (
+                  <ChevronUp size={18} color={colors.textSecondary} strokeWidth={2} />
+                ) : (
+                  <ChevronDown size={18} color={colors.textSecondary} strokeWidth={2} />
+                )}
+              </TouchableOpacity>
+
+              {expandedCompleted[timeBlock] && (
+                <View testID={`completed-list-${timeBlock}`}>
+                  {completedTodayTasks.map(task => {
+                    const EnergyIcon = energyConfig[task.energy].icon;
+                    const isExpanded = expandedTasks[task.id];
+                    return (
+                      <View key={task.id} style={{ opacity: 0.92 }}>
+                        {Platform.OS === 'ios' ? (
+                          <BlurView
+                            intensity={26}
+                            tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
+                            style={[styles.taskItemGlass, isExpanded && styles.taskItemExpanded]}
+                          >
+                            <TouchableOpacity
+                              style={styles.taskItemContent}
+                              onPress={() => setExpandedTasks(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
+                              activeOpacity={0.7}
+                              testID={`task-item-${task.id}`}
+                            >
+                              <TouchableOpacity
+                                onPress={() => toggleTaskComplete(timeBlock, task.id)}
+                                style={styles.checkbox}
+                                testID={`task-checkbox-${task.id}`}
+                              >
+                                <CheckCircle2 size={22} color={colors.success} strokeWidth={2.5} />
+                              </TouchableOpacity>
+
+                              <Text style={[styles.taskText, styles.taskTextCompleted]}>{task.text}</Text>
+
+                              <View style={styles.taskMeta}>
+                                {task.category === 'work' ? (
+                                  <Briefcase size={14} color={colors.primary} strokeWidth={2} />
+                                ) : (
+                                  <Home size={14} color={colors.secondary} strokeWidth={2} />
+                                )}
+                                <EnergyIcon size={14} color={energyConfig[task.energy].color} strokeWidth={2} />
+                                <View style={styles.taskTime}>
+                                  <Clock size={12} color={colors.textSecondary} strokeWidth={2} />
+                                  <Text style={styles.taskTimeText}>{task.estimated}m</Text>
+                                </View>
+                              </View>
+
+                              {isExpanded ? (
+                                <ChevronUp size={18} color={colors.textSecondary} strokeWidth={2} />
+                              ) : (
+                                <ChevronDown size={18} color={colors.textSecondary} strokeWidth={2} />
+                              )}
+                            </TouchableOpacity>
+                          </BlurView>
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.taskItem, isExpanded && styles.taskItemExpanded]}
+                            onPress={() => setExpandedTasks(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
+                            activeOpacity={0.7}
+                            testID={`task-item-${task.id}`}
+                          >
+                            <TouchableOpacity
+                              onPress={() => toggleTaskComplete(timeBlock, task.id)}
+                              style={styles.checkbox}
+                              testID={`task-checkbox-${task.id}`}
+                            >
+                              <CheckCircle2 size={22} color={colors.success} />
+                            </TouchableOpacity>
+
+                            <Text style={[styles.taskText, styles.taskTextCompleted]}>{task.text}</Text>
+
+                            <View style={styles.taskMeta}>
+                              {task.category === 'work' ? (
+                                <Briefcase size={14} color={colors.primary} />
+                              ) : (
+                                <Home size={14} color={colors.secondary} />
+                              )}
+                              <EnergyIcon size={14} color={energyConfig[task.energy].color} />
+                              <View style={styles.taskTime}>
+                                <Clock size={12} color={colors.textSecondary} />
+                                <Text style={styles.taskTimeText}>{task.estimated}m</Text>
+                              </View>
+                            </View>
+
+                            {isExpanded ? (
+                              <ChevronUp size={18} color={colors.textSecondary} />
+                            ) : (
+                              <ChevronDown size={18} color={colors.textSecondary} />
+                            )}
+                          </TouchableOpacity>
+                        )}
+
+                        {isExpanded && (
+                          Platform.OS === 'ios' ? (
+                            <BlurView
+                              intensity={22}
+                              tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
+                              style={styles.taskExpandedGlass}
+                            >
+                              <View style={styles.taskExpandedContent}>
+                                <TouchableOpacity
+                                  style={styles.deleteButton}
+                                  onPress={() => handleDeleteTask(timeBlock, task.id)}
+                                  testID={`task-delete-${task.id}`}
+                                >
+                                  <Trash2 size={18} color={colors.error} />
+                                  <Text style={styles.deleteButtonText}>Delete Task</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </BlurView>
+                          ) : (
+                            <View style={styles.taskExpanded}>
+                              <TouchableOpacity
+                                style={styles.deleteButton}
+                                onPress={() => handleDeleteTask(timeBlock, task.id)}
+                                testID={`task-delete-${task.id}`}
+                              >
+                                <Trash2 size={18} color={colors.error} />
+                                <Text style={styles.deleteButtonText}>Delete Task</Text>
+                              </TouchableOpacity>
+                            </View>
+                          )
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          )}
+
           <View style={styles.addTaskContainer}>
             <TextInput
               style={styles.addTaskInput}
@@ -870,6 +1085,9 @@ export default function TasksScreen() {
         style={styles.gradient}
       >
         <ScrollView
+          ref={(r) => {
+            scrollRef.current = r;
+          }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: tabBarHeight + 28 }}
@@ -878,7 +1096,27 @@ export default function TasksScreen() {
           }
         >
           <View style={styles.header}>
-            <Text style={styles.greeting}>Welcome back, {userData.name || 'Friend'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <Text style={[styles.greeting, { flex: 1 }]}>Welcome back, {userData.name || 'Friend'}</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  console.log('open completed-tasks');
+                  router.push('/completed-tasks' as any);
+                }}
+                activeOpacity={0.8}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  borderRadius: 14,
+                  backgroundColor: colors.glass.background,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+                testID="open-completed-tasks"
+              >
+                <CheckCircle2 size={18} color={colors.success} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
             {Platform.OS === 'ios' ? (
               <BlurView
                 intensity={60}
@@ -934,6 +1172,7 @@ export default function TasksScreen() {
                       key={index}
                       style={styles.suggestionCard}
                       onPress={() => handleAddSuggestion(suggestion)}
+                      testID={`suggestion-${index}`}
                     >
                       <Text style={styles.suggestionText}>{suggestion.text}</Text>
                       <Text style={styles.suggestionReason}>{suggestion.reason}</Text>
@@ -964,6 +1203,7 @@ export default function TasksScreen() {
                       key={index}
                       style={styles.suggestionCard}
                       onPress={() => handleAddSuggestion(suggestion)}
+                      testID={`suggestion-${index}`}
                     >
                       <Text style={styles.suggestionText}>{suggestion.text}</Text>
                       <Text style={styles.suggestionReason}>{suggestion.reason}</Text>

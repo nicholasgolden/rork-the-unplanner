@@ -16,6 +16,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="daily-checkin" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="completed-tasks" options={{ title: "Completed Tasks", presentation: "modal" }} />
     </Stack>
   );
 }

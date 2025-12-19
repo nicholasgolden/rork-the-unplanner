@@ -9,6 +9,7 @@ export interface Task {
   id: number;
   text: string;
   completed: boolean;
+  completedAt?: string;
   energy: 'low' | 'medium' | 'high';
   estimated: number;
   category: 'work' | 'personal';
@@ -120,6 +121,40 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [isWorkTime, setIsWorkTime] = useState(false);
   const [workTimeRemaining, setWorkTimeRemaining] = useState<string | null>(null);
   const [taskSuggestions, setTaskSuggestions] = useState<TaskSuggestion[]>([]);
+  const [dismissedSuggestionsByDay, setDismissedSuggestionsByDay] = useState<Record<string, string[]>>({});
+
+  const persistDismissedSuggestions = useCallback(async (value: Record<string, string[]>) => {
+    try {
+      await AsyncStorage.setItem('adhd-planner-dismissed-suggestions', JSON.stringify(value));
+    } catch (error) {
+      console.error('Save dismissed suggestions failed:', error);
+    }
+  }, []);
+
+  const dismissSuggestionForToday = useCallback(async (suggestionText: string) => {
+    const todayKey = new Date().toISOString().split('T')[0];
+    const existing = dismissedSuggestionsByDay[todayKey] ?? [];
+    if (existing.includes(suggestionText)) return;
+
+    const next: Record<string, string[]> = {
+      ...dismissedSuggestionsByDay,
+      [todayKey]: [...existing, suggestionText],
+    };
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 14);
+    const cutoffKey = cutoff.toISOString().split('T')[0];
+    const cleaned: Record<string, string[]> = {};
+    Object.keys(next)
+      .sort()
+      .forEach((k) => {
+        if (k >= cutoffKey) cleaned[k] = next[k] ?? [];
+      });
+
+    console.log('dismissSuggestionForToday', { todayKey, suggestionText });
+    setDismissedSuggestionsByDay(cleaned);
+    await persistDismissedSuggestions(cleaned);
+  }, [dismissedSuggestionsByDay, persistDismissedSuggestions]);
   const [isLoading, setIsLoading] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(0);
   const [systemScheme, setSystemScheme] = useState<'light' | 'dark'>((Appearance.getColorScheme() as 'light' | 'dark') ?? 'light');
@@ -140,6 +175,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     try {
       const savedUserData = await AsyncStorage.getItem('adhd-planner-data');
       const savedTasks = await AsyncStorage.getItem('adhd-planner-tasks');
+      const savedDismissedSuggestions = await AsyncStorage.getItem('adhd-planner-dismissed-suggestions');
 
       if (savedUserData) {
         const parsed: UserData & Partial<{ themeMode: 'system' | 'light' | 'dark' }> = JSON.parse(savedUserData);
@@ -153,6 +189,17 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
         if (savedTasks) {
           setTasks(JSON.parse(savedTasks));
+        }
+
+        if (savedDismissedSuggestions) {
+          try {
+            const parsedDismissed: unknown = JSON.parse(savedDismissedSuggestions);
+            if (parsedDismissed && typeof parsedDismissed === 'object') {
+              setDismissedSuggestionsByDay(parsedDismissed as Record<string, string[]>);
+            }
+          } catch (e) {
+            console.error('Error parsing dismissed suggestions:', e);
+          }
         }
 
         // Load today's brain dump
@@ -335,13 +382,17 @@ export const [AppProvider, useApp] = createContextHook(() => {
         suggestions = suggestions.filter(s => s.category === 'personal' || s.category === 'both');
       }
 
-      setTaskSuggestions(suggestions.slice(0, 4));
+      const todayKey = new Date().toISOString().split('T')[0];
+      const dismissedToday = new Set(dismissedSuggestionsByDay[todayKey] ?? []);
+      const filtered = suggestions.filter((s) => !dismissedToday.has(s.text));
+
+      setTaskSuggestions(filtered.slice(0, 4));
     };
 
     if (userData.name) {
       generateSuggestions();
     }
-  }, [userData, isWorkTime]);
+  }, [userData, isWorkTime, dismissedSuggestionsByDay]);
 
   // Add task
   const addTask = useCallback((timeBlock: keyof Tasks, text: string, suggestion?: TaskSuggestion) => {
@@ -349,6 +400,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       id: Date.now(),
       text: text.trim(),
       completed: false,
+      completedAt: undefined,
       energy: suggestion?.energy || 'medium',
       estimated: 30,
       category: suggestion?.category === 'work' ? 'work' : (isWorkTime ? 'work' : 'personal'),
@@ -364,12 +416,22 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   // Toggle task completion
   const toggleTaskComplete = useCallback((timeBlock: keyof Tasks, taskId: number) => {
-    const newTasks = {
+    const nowIso = new Date().toISOString();
+
+    const newTasks: Tasks = {
       ...tasks,
-      [timeBlock]: tasks[timeBlock].map(task =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
+      [timeBlock]: tasks[timeBlock].map(task => {
+        if (task.id !== taskId) return task;
+        const nextCompleted = !task.completed;
+        return {
+          ...task,
+          completed: nextCompleted,
+          completedAt: nextCompleted ? nowIso : undefined,
+        };
+      })
     };
+
+    console.log('toggleTaskComplete', { timeBlock, taskId });
     saveTasks(newTasks);
   }, [tasks, saveTasks]);
 
@@ -406,6 +468,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     isWorkTime,
     workTimeRemaining,
     taskSuggestions,
+    dismissedSuggestionsByDay,
     isLoading,
     colors,
     saveUserData,
@@ -416,7 +479,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     updateTask,
     deleteTask,
     setMood,
-    loadData
+    loadData,
+    dismissSuggestionForToday
   }), [
     userData,
     tasks,
@@ -424,6 +488,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     isWorkTime,
     workTimeRemaining,
     taskSuggestions,
+    dismissedSuggestionsByDay,
     isLoading,
     colors,
     saveUserData,
@@ -434,6 +499,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     updateTask,
     deleteTask,
     setMood,
-    loadData
+    loadData,
+    dismissSuggestionForToday
   ]);
 });
