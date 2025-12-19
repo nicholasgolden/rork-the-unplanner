@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -42,10 +42,6 @@ export default function SettingsScreen() {
     });
   };
 
-  const toggleTheme = () => {
-    const next = userData.theme === 'light' ? 'dark' : 'light';
-    saveUserData({ theme: next, themeMode: 'light' === next ? 'light' : 'dark' });
-  };
 
   const openScheduleEditor = () => {
     setEditingSchedule(userData.workSchedule);
@@ -533,11 +529,12 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
     gap: 8,
-    opacity: 0.95, // More transparent
+    opacity: 0.95,
   },
   usageOptionText: {
     fontSize: 13,
