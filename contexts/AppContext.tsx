@@ -167,15 +167,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
         
         if (parsed.name) {
           if (lastCheckin !== today) {
-            router.replace('/daily-checkin');
+            router.replace('/daily-checkin' as any);
           } else {
             router.replace('/(tabs)');
           }
         } else {
-          router.replace('/onboarding');
+          router.replace('/onboarding' as any);
         }
       } else {
-        router.replace('/onboarding');
+        router.replace('/onboarding' as any);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -251,15 +251,16 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   // Check work time
   useEffect(() => {
+    const workSchedule = userData.workSchedule;
     const checkWorkTime = () => {
-      if (!userData.workSchedule?.enabled) {
+      if (!workSchedule?.enabled) {
         setIsWorkTime(false);
         return;
       }
 
       const now = new Date();
-      const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][now.getDay()] as keyof typeof userData.workSchedule.days;
-      const currentDay = userData.workSchedule.days[dayName];
+      const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][now.getDay()] as keyof typeof workSchedule.days;
+      const currentDay = workSchedule.days[dayName];
 
       if (!currentDay?.enabled) {
         setIsWorkTime(false);

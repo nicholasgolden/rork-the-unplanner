@@ -49,7 +49,7 @@ export default function OnboardingScreen() {
         if (hasGoals) {
           setCurrentStep('goalSteps');
         } else {
-          router.replace('/daily-checkin');
+          router.replace('/daily-checkin' as any);
         }
         break;
       case 'goalSteps':
@@ -57,7 +57,7 @@ export default function OnboardingScreen() {
         const updatedGoals = [...localData.goals.filter(g => g.trim() !== ''), currentGoal];
         const updatedGoalSteps = { ...localData.goalSteps, [currentGoal]: goalSteps.filter(s => s.trim() !== '') };
         await saveUserData({ goals: updatedGoals, goalSteps: updatedGoalSteps });
-        router.replace('/daily-checkin');
+        router.replace('/daily-checkin' as any);
         break;
     }
   };
