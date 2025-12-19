@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import {
@@ -37,6 +37,7 @@ import { useApp } from '@/contexts/AppContext';
 type TimeBlock = 'morning' | 'afternoon' | 'evening';
 
 export default function TasksScreen() {
+  const insets = useSafeAreaInsets();
   const { userData, tasks, addTask, toggleTaskComplete, updateTask, deleteTask, taskSuggestions, isWorkTime, colors } = useApp();
   const [newTaskInputs, setNewTaskInputs] = useState({ morning: '', afternoon: '', evening: '' });
   const [expandedTasks, setExpandedTasks] = useState<Record<number, boolean>>({});
@@ -44,6 +45,7 @@ export default function TasksScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const isLightTheme = userData.theme === 'light';
+  const tabBarHeight = useMemo(() => 84 + insets.bottom, [insets.bottom]);
 
   const styles = StyleSheet.create({
     container: {
@@ -203,7 +205,7 @@ export default function TasksScreen() {
     },
     tasksContainer: {
       paddingHorizontal: 20,
-      paddingBottom: 260,
+      paddingBottom: 24,
     },
     taskBlock: {
       marginBottom: 24,
@@ -870,7 +872,7 @@ export default function TasksScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ paddingBottom: tabBarHeight + 28 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
