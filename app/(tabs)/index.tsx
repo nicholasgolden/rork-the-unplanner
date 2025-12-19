@@ -539,14 +539,16 @@ export default function TasksScreen() {
     if (!ref.current || !scrollRef.current) return;
 
     try {
-      const nodeHandle = findNodeHandle(scrollRef.current);
-      if (!nodeHandle) {
-        console.error('scrollToTimeBlock: no node handle');
+      const scrollNodeHandle = findNodeHandle(scrollRef.current);
+      const targetNodeHandle = findNodeHandle(ref.current);
+      
+      if (!scrollNodeHandle || !targetNodeHandle) {
+        console.error('scrollToTimeBlock: missing node handles', { scrollNodeHandle, targetNodeHandle });
         return;
       }
 
       ref.current.measureLayout(
-        nodeHandle,
+        scrollNodeHandle,
         (_x, y) => {
           console.log('scrollToTimeBlock', { timeBlock, y });
           scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
