@@ -408,8 +408,14 @@ export default function ResourcesScreen() {
           </View>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
-          {categories.map(category => {
+        <View style={styles.categoriesWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoriesContainer}
+            contentContainerStyle={styles.categoriesContent}
+          >
+            {categories.map(category => {
             const IconComponent = category.icon;
             const isSelected = selectedCategory === category.id;
             
@@ -436,8 +442,9 @@ export default function ResourcesScreen() {
                 </Text>
               </TouchableOpacity>
             );
-          })}
-        </ScrollView>
+            })}
+          </ScrollView>
+        </View>
 
         <ScrollView 
           style={styles.resourcesList}
@@ -499,9 +506,17 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
   },
+  categoriesWrapper: {
+    paddingTop: 2,
+    paddingBottom: 8,
+  },
   categoriesContainer: {
     paddingHorizontal: 12,
-    marginBottom: 0,
+    maxHeight: 44,
+  },
+  categoriesContent: {
+    alignItems: 'center',
+    paddingRight: 8,
   },
   categoryButton: {
     flexDirection: 'row',
