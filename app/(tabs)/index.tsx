@@ -43,6 +43,8 @@ export default function TasksScreen() {
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const isLightTheme = userData.theme === 'light';
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -201,7 +203,7 @@ export default function TasksScreen() {
     },
     tasksContainer: {
       paddingHorizontal: 20,
-      paddingBottom: 150, // Increased padding for better scrolling
+      paddingBottom: 260,
     },
     taskBlock: {
       marginBottom: 24,
@@ -551,7 +553,7 @@ export default function TasksScreen() {
         {Platform.OS === 'ios' ? (
           <BlurView
             intensity={60}
-            tint="systemUltraThinMaterialDark"
+            tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
             style={styles.taskBlockHeader}
           >
             <LinearGradient
@@ -602,7 +604,7 @@ export default function TasksScreen() {
                 {Platform.OS === 'ios' ? (
                   <BlurView
                     intensity={40}
-                    tint="systemUltraThinMaterialDark"
+                    tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
                     style={[styles.taskItemGlass, isExpanded && styles.taskItemExpanded]}
                   >
                     <TouchableOpacity
@@ -691,7 +693,7 @@ export default function TasksScreen() {
                   Platform.OS === 'ios' ? (
                     <BlurView
                       intensity={30}
-                      tint="systemUltraThinMaterialDark"
+                      tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
                       style={styles.taskExpandedGlass}
                     >
                       <View style={styles.taskExpandedContent}>
@@ -867,6 +869,8 @@ export default function TasksScreen() {
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 32 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
@@ -876,7 +880,7 @@ export default function TasksScreen() {
             {Platform.OS === 'ios' ? (
               <BlurView
                 intensity={60}
-                tint="systemUltraThinMaterialDark"
+                tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
                 style={styles.progressOverview}
               >
                 <View style={styles.progressCircle}>
@@ -912,7 +916,7 @@ export default function TasksScreen() {
             Platform.OS === 'ios' ? (
               <BlurView
                 intensity={40}
-                tint="systemUltraThinMaterialDark"
+                tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
                 style={styles.suggestionsContainer}
               >
                 <View style={styles.suggestionsHeader}>
@@ -979,6 +983,7 @@ export default function TasksScreen() {
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.tasksContainer}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
           >
             {(['morning', 'afternoon', 'evening'] as TimeBlock[]).map(renderTaskBlock)}
           </KeyboardAvoidingView>
