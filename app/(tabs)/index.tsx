@@ -40,7 +40,7 @@ type TimeBlock = 'morning' | 'afternoon' | 'evening';
 
 export default function TasksScreen() {
   const insets = useSafeAreaInsets();
-  const { userData, tasks, addTask, toggleTaskComplete, updateTask, deleteTask, taskSuggestions, isWorkTime, colors, dismissSuggestionForToday } = useApp();
+  const { userData, tasks, addTask, toggleTaskComplete, updateTask, deleteTask, taskSuggestions, isWorkTime, colors, dismissSuggestionForToday, effectiveTheme } = useApp();
   const [newTaskInputs, setNewTaskInputs] = useState<{ morning: string; afternoon: string; evening: string }>({ morning: '', afternoon: '', evening: '' });
   const [expandedTasks, setExpandedTasks] = useState<Record<number, boolean>>({});
   const [expandedCompleted, setExpandedCompleted] = useState<Record<TimeBlock, boolean>>({
@@ -55,7 +55,7 @@ export default function TasksScreen() {
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const isLightTheme = userData.theme === 'light';
+  const isLightTheme = effectiveTheme === 'light';
   const tabBarHeight = useMemo(() => 84 + insets.bottom, [insets.bottom]);
 
   const styles = StyleSheet.create({
@@ -76,7 +76,7 @@ export default function TasksScreen() {
       color: colors.text,
       marginBottom: 20,
       letterSpacing: -0.5,
-      ...(userData.theme === 'light' ? {
+      ...(effectiveTheme === 'light' ? {
         textShadowColor: 'rgba(0, 0, 0, 0.1)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
@@ -91,7 +91,7 @@ export default function TasksScreen() {
       borderWidth: Platform.OS === 'ios' ? 0 : 1,
       borderColor: colors.border,
       overflow: 'hidden',
-      ...(userData.theme === 'light' && Platform.OS === 'ios' ? {
+      ...(effectiveTheme === 'light' && Platform.OS === 'ios' ? {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -123,7 +123,7 @@ export default function TasksScreen() {
       color: colors.text,
       marginBottom: 4,
       letterSpacing: -0.3,
-      ...(userData.theme === 'light' ? {
+      ...(effectiveTheme === 'light' ? {
         textShadowColor: 'rgba(0, 0, 0, 0.1)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
@@ -143,7 +143,7 @@ export default function TasksScreen() {
       borderWidth: Platform.OS === 'ios' ? 0 : 1,
       borderColor: colors.border,
       overflow: 'hidden',
-      ...(userData.theme === 'light' && Platform.OS === 'ios' ? {
+      ...(effectiveTheme === 'light' && Platform.OS === 'ios' ? {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
@@ -162,7 +162,7 @@ export default function TasksScreen() {
       marginLeft: 12,
       flex: 1,
       letterSpacing: -0.3,
-      ...(userData.theme === 'light' ? {
+      ...(effectiveTheme === 'light' ? {
         textShadowColor: 'rgba(0, 0, 0, 0.1)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
@@ -181,7 +181,7 @@ export default function TasksScreen() {
       width: 220,
       borderWidth: 1,
       borderColor: colors.border,
-      ...(userData.theme === 'light' ? {
+      ...(effectiveTheme === 'light' ? {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
@@ -225,7 +225,7 @@ export default function TasksScreen() {
       overflow: 'hidden',
       borderWidth: Platform.OS === 'ios' ? 0 : 1,
       borderColor: colors.border,
-      ...(userData.theme === 'light' && Platform.OS === 'ios' ? {
+      ...(effectiveTheme === 'light' && Platform.OS === 'ios' ? {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.15,
@@ -284,7 +284,7 @@ export default function TasksScreen() {
       marginBottom: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      ...(userData.theme === 'light' ? {
+      ...(effectiveTheme === 'light' ? {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
@@ -302,7 +302,7 @@ export default function TasksScreen() {
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: colors.border,
-      ...(userData.theme === 'light' ? {
+      ...(effectiveTheme === 'light' ? {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
@@ -460,7 +460,7 @@ export default function TasksScreen() {
       borderWidth: 1,
       borderColor: colors.border,
       fontWeight: '500',
-      ...(userData.theme === 'light' ? {
+      ...(effectiveTheme === 'light' ? {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,

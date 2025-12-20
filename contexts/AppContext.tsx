@@ -463,6 +463,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   return useMemo(() => ({
     userData,
+    effectiveTheme,
     tasks,
     brainDump,
     isWorkTime,
@@ -483,6 +484,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     dismissSuggestionForToday
   }), [
     userData,
+    effectiveTheme,
     tasks,
     brainDump,
     isWorkTime,
