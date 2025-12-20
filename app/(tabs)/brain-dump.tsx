@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -16,13 +16,46 @@ import { Brain, Mic, MicOff, Volume2, Calendar, Save } from 'lucide-react-native
 import { useApp } from '@/contexts/AppContext';
 
 export default function BrainDumpScreen() {
-  const { userData, brainDump, saveBrainDump, colors } = useApp();
-  const [localBrainDump, setLocalBrainDump] = useState(brainDump);
+  const { userData, brainDump, brainDumpTitle, saveBrainDump, saveBrainDumpTitle, colors, effectiveTheme } = useApp();
+  const [localTitle, setLocalTitle] = useState<string>(brainDumpTitle);
+  const [localBrainDump, setLocalBrainDump] = useState<string>(brainDump);
   const [isRecording, setIsRecording] = useState(false);
 
-  const handleSave = () => {
+  const titleInputRef = useRef<TextInput | null>(null);
+  const bodyInputRef = useRef<TextInput | null>(null);
+
+  const isLightTheme = effectiveTheme === 'light';
+
+  useEffect(() => {
+    setLocalTitle(brainDumpTitle);
+  }, [brainDumpTitle]);
+
+  useEffect(() => {
+    setLocalBrainDump(brainDump);
+  }, [brainDump]);
+
+  const handleSaveBody = useCallback(() => {
     saveBrainDump(localBrainDump);
-  };
+  }, [localBrainDump, saveBrainDump]);
+
+  const handleSaveTitle = useCallback(() => {
+    saveBrainDumpTitle(localTitle);
+  }, [localTitle, saveBrainDumpTitle]);
+
+  const handleSaveAll = useCallback(() => {
+    saveBrainDumpTitle(localTitle);
+    saveBrainDump(localBrainDump);
+  }, [localTitle, localBrainDump, saveBrainDump, saveBrainDumpTitle]);
+
+  const handlePromptPress = useCallback((prompt: string) => {
+    console.log('thoughts prompt press -> title', { prompt });
+    setLocalTitle(prompt);
+    saveBrainDumpTitle(prompt);
+
+    setTimeout(() => {
+      bodyInputRef.current?.focus();
+    }, 60);
+  }, [saveBrainDumpTitle]);
 
   const today = new Date();
   const dateString = today.toLocaleDateString('en-US', { 
@@ -32,7 +65,7 @@ export default function BrainDumpScreen() {
     day: 'numeric' 
   });
 
-  const styles = StyleSheet.create({
+  const styles = useMemo(() => StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -122,6 +155,43 @@ export default function BrainDumpScreen() {
       fontSize: 14,
       color: colors.textTertiary,
       fontWeight: '600',
+    },
+    titleCard: {
+      borderRadius: 18,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.border.replace('0.1)', isLightTheme ? '0.22)' : '0.06)'),
+      backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.cardBg.replace('0.1)', isLightTheme ? '0.5)' : '0.08)'),
+      marginBottom: 14,
+    },
+    titleCardInner: {
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    titlePill: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: isLightTheme ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)',
+      borderWidth: 1,
+      borderColor: isLightTheme ? 'rgba(0,0,0,0.06)' : colors.border.replace('0.12)', '0.10)'),
+    },
+    titlePillText: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.textSecondary,
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
+    },
+    titleInput: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      padding: 0,
     },
     textArea: {
       backgroundColor: colors.cardBg.replace('0.1)', '0.08)'), // More transparent
@@ -259,7 +329,7 @@ export default function BrainDumpScreen() {
     historyCardContent: {
       padding: 16,
     },
-  });
+  }), [colors, isLightTheme, isRecording]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -392,7 +462,7 @@ export default function BrainDumpScreen() {
                     placeholderTextColor={colors.textTertiary}
                     value={localBrainDump}
                     onChangeText={setLocalBrainDump}
-                    onBlur={handleSave}
+                    onBlur={handleSaveBody}
                     textAlignVertical="top"
                   />
                 </BlurView>
@@ -404,7 +474,7 @@ export default function BrainDumpScreen() {
                   placeholderTextColor={colors.textTertiary}
                   value={localBrainDump}
                   onChangeText={setLocalBrainDump}
-                  onBlur={handleSave}
+                  onBlur={handleSaveBody}
                   textAlignVertical="top"
                 />
               )}
@@ -490,14 +560,14 @@ export default function BrainDumpScreen() {
             tint="systemUltraThinMaterialDark"
             style={styles.footer}
           >
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+            <TouchableOpacity style={styles.saveButton} onPress={handleSaveAll} testID="thoughts-save">
               <Save size={22} color={colors.white} strokeWidth={2.5} />
               <Text style={styles.saveButtonText}>Save Entry</Text>
             </TouchableOpacity>
           </BlurView>
         ) : (
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+            <TouchableOpacity style={styles.saveButton} onPress={handleSaveAll} testID="thoughts-save">
               <Save size={20} color={colors.white} />
               <Text style={styles.saveButtonText}>Save Entry</Text>
             </TouchableOpacity>

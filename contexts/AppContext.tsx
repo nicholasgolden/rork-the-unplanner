@@ -57,6 +57,7 @@ export interface UserData {
   themeMode: 'system' | 'light' | 'dark';
   bodyDoublingActive: boolean;
   brainDumpHistory: Record<string, string>;
+  brainDumpTitleHistory: Record<string, string>;
   preferences: {
     notifications: boolean;
     autoSave: boolean;
@@ -100,6 +101,7 @@ const defaultUserData: UserData = {
   themeMode: 'system',
   bodyDoublingActive: false,
   brainDumpHistory: {},
+  brainDumpTitleHistory: {},
   preferences: {
     notifications: true,
     autoSave: true,
@@ -117,7 +119,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     afternoon: [],
     evening: []
   });
-  const [brainDump, setBrainDump] = useState("");
+  const [brainDump, setBrainDump] = useState<string>('');
+  const [brainDumpTitle, setBrainDumpTitle] = useState<string>('');
   const [isWorkTime, setIsWorkTime] = useState(false);
   const [workTimeRemaining, setWorkTimeRemaining] = useState<string | null>(null);
   const [taskSuggestions, setTaskSuggestions] = useState<TaskSuggestion[]>([]);
@@ -207,6 +210,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
         if (parsed.brainDumpHistory && parsed.brainDumpHistory[todayKey]) {
           setBrainDump(parsed.brainDumpHistory[todayKey]);
         }
+        if (parsed.brainDumpTitleHistory && parsed.brainDumpTitleHistory[todayKey]) {
+          setBrainDumpTitle(parsed.brainDumpTitleHistory[todayKey]);
+        }
 
         // Check if daily check-in is needed
         const today = new Date().toDateString();
@@ -295,6 +301,14 @@ export const [AppProvider, useApp] = createContextHook(() => {
     newHistory[today] = text;
     await saveUserData({ brainDumpHistory: newHistory });
   }, [userData.brainDumpHistory, saveUserData]);
+
+  const saveBrainDumpTitle = useCallback(async (title: string) => {
+    setBrainDumpTitle(title);
+    const today = new Date().toISOString().split('T')[0];
+    const newHistory = { ...userData.brainDumpTitleHistory };
+    newHistory[today] = title;
+    await saveUserData({ brainDumpTitleHistory: newHistory });
+  }, [userData.brainDumpTitleHistory, saveUserData]);
 
   // Check work time
   useEffect(() => {
@@ -466,6 +480,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     effectiveTheme,
     tasks,
     brainDump,
+    brainDumpTitle,
     isWorkTime,
     workTimeRemaining,
     taskSuggestions,
@@ -475,6 +490,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     saveUserData,
     saveTasks,
     saveBrainDump,
+    saveBrainDumpTitle,
     addTask,
     toggleTaskComplete,
     updateTask,
@@ -487,6 +503,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     effectiveTheme,
     tasks,
     brainDump,
+    brainDumpTitle,
     isWorkTime,
     workTimeRemaining,
     taskSuggestions,
@@ -496,6 +513,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     saveUserData,
     saveTasks,
     saveBrainDump,
+    saveBrainDumpTitle,
     addTask,
     toggleTaskComplete,
     updateTask,
