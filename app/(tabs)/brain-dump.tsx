@@ -329,7 +329,7 @@ export default function BrainDumpScreen() {
     historyCardContent: {
       padding: 16,
     },
-  }), [colors, isLightTheme, isRecording]);
+  }), [colors, isLightTheme]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -349,7 +349,7 @@ export default function BrainDumpScreen() {
               {Platform.OS === 'ios' ? (
                 <BlurView
                   intensity={60}
-                  tint="systemUltraThinMaterialDark"
+                  tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
                   style={styles.headerGradient}
                 >
                   <LinearGradient
@@ -384,7 +384,7 @@ export default function BrainDumpScreen() {
             {Platform.OS === 'ios' ? (
               <BlurView
                 intensity={40}
-                tint="systemUltraThinMaterialDark"
+                tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
                 style={styles.dateContainer}
               >
                 <Calendar size={18} color={colors.textSecondary} strokeWidth={2} />
@@ -398,12 +398,56 @@ export default function BrainDumpScreen() {
             )}
 
             <View style={styles.content}>
+              {Platform.OS === 'ios' ? (
+                <BlurView
+                  intensity={35}
+                  tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
+                  style={styles.titleCard}
+                >
+                  <View style={styles.titleCardInner}>
+                    <View style={styles.titlePill}>
+                      <Text style={styles.titlePillText}>Title</Text>
+                    </View>
+                    <TextInput
+                      ref={titleInputRef}
+                      style={styles.titleInput}
+                      placeholder="Give this thought a title..."
+                      placeholderTextColor={colors.textTertiary}
+                      value={localTitle}
+                      onChangeText={setLocalTitle}
+                      onBlur={handleSaveTitle}
+                      returnKeyType="done"
+                      testID="thoughts-title-input"
+                    />
+                  </View>
+                </BlurView>
+              ) : (
+                <View style={styles.titleCard}>
+                  <View style={styles.titleCardInner}>
+                    <View style={styles.titlePill}>
+                      <Text style={styles.titlePillText}>Title</Text>
+                    </View>
+                    <TextInput
+                      ref={titleInputRef}
+                      style={styles.titleInput}
+                      placeholder="Give this thought a title..."
+                      placeholderTextColor={colors.textTertiary}
+                      value={localTitle}
+                      onChangeText={setLocalTitle}
+                      onBlur={handleSaveTitle}
+                      returnKeyType="done"
+                      testID="thoughts-title-input"
+                    />
+                  </View>
+                </View>
+              )}
+
               <View style={styles.toolBar}>
                 {Platform.OS === 'ios' ? (
                   <>
                     <BlurView
                       intensity={40}
-                      tint="systemUltraThinMaterialDark"
+                      tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
                       style={[styles.toolButton, isRecording && styles.toolButtonActive]}
                     >
                       <TouchableOpacity
@@ -419,7 +463,7 @@ export default function BrainDumpScreen() {
                     </BlurView>
                     <BlurView
                       intensity={40}
-                      tint="systemUltraThinMaterialDark"
+                      tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
                       style={styles.toolButton}
                     >
                       <TouchableOpacity style={styles.toolButtonContent}>
@@ -452,7 +496,7 @@ export default function BrainDumpScreen() {
               {Platform.OS === 'ios' ? (
                 <BlurView
                   intensity={30}
-                  tint="systemUltraThinMaterialDark"
+                  tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
                   style={styles.textAreaContainer}
                 >
                   <TextInput
@@ -493,12 +537,13 @@ export default function BrainDumpScreen() {
                       <BlurView
                         key={index}
                         intensity={30}
-                        tint="systemUltraThinMaterialDark"
+                        tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
                         style={styles.promptCard}
                       >
                         <TouchableOpacity
                           style={styles.promptCardContent}
-                          onPress={() => setLocalBrainDump(prev => prev + (prev ? '\n\n' : '') + prompt + '\n')}
+                          onPress={() => handlePromptPress(prompt)}
+                          testID={`prompt-${index}`}
                         >
                           <Text style={styles.promptText}>{prompt}</Text>
                         </TouchableOpacity>
@@ -507,7 +552,8 @@ export default function BrainDumpScreen() {
                       <TouchableOpacity
                         key={index}
                         style={styles.promptCard}
-                        onPress={() => setLocalBrainDump(prev => prev + (prev ? '\n\n' : '') + prompt + '\n')}
+                        onPress={() => handlePromptPress(prompt)}
+                        testID={`prompt-${index}`}
                       >
                         <Text style={styles.promptText}>{prompt}</Text>
                       </TouchableOpacity>
@@ -526,7 +572,7 @@ export default function BrainDumpScreen() {
                       <BlurView
                         key={date}
                         intensity={30}
-                        tint="systemUltraThinMaterialDark"
+                        tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
                         style={styles.historyCard}
                       >
                         <TouchableOpacity style={styles.historyCardContent}>
@@ -557,7 +603,7 @@ export default function BrainDumpScreen() {
         {Platform.OS === 'ios' ? (
           <BlurView
             intensity={80}
-            tint="systemUltraThinMaterialDark"
+            tint={isLightTheme ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
             style={styles.footer}
           >
             <TouchableOpacity style={styles.saveButton} onPress={handleSaveAll} testID="thoughts-save">
