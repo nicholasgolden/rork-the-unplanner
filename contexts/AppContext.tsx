@@ -1,9 +1,22 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Platform, Appearance, ColorSchemeName } from 'react-native';
 import { darkColors, lightColors } from '@/constants/colors';
+
+export interface TaskCategory {
+  id: string;
+  name: string;
+  color: string;
+  icon: 'work' | 'personal' | 'health' | 'shopping' | 'finance' | 'social' | 'learning' | 'other';
+}
+
+export interface RecurrencePattern {
+  type: 'daily' | 'weekly' | 'monthly' | 'none';
+  daysOfWeek?: number[];
+  interval?: number;
+}
 
 export interface Task {
   id: number;
@@ -12,8 +25,10 @@ export interface Task {
   completedAt?: string;
   energy: 'low' | 'medium' | 'high';
   estimated: number;
-  category: 'work' | 'personal';
+  category: string;
   createdAt: string;
+  recurrence?: RecurrencePattern;
+  parentTaskId?: number;
 }
 
 export interface TaskSuggestion {
@@ -72,6 +87,7 @@ export interface UserData {
     workLifeSeparation: boolean;
     smartScheduling: boolean;
   };
+  customCategories: TaskCategory[];
 }
 
 export interface Tasks {
@@ -79,6 +95,16 @@ export interface Tasks {
   afternoon: Task[];
   evening: Task[];
 }
+
+const defaultCategories: TaskCategory[] = [
+  { id: 'work', name: 'Work', color: '#007AFF', icon: 'work' },
+  { id: 'personal', name: 'Personal', color: '#34C759', icon: 'personal' },
+  { id: 'health', name: 'Health', color: '#FF3B30', icon: 'health' },
+  { id: 'shopping', name: 'Shopping', color: '#FF9500', icon: 'shopping' },
+  { id: 'finance', name: 'Finance', color: '#5856D6', icon: 'finance' },
+  { id: 'social', name: 'Social', color: '#FF2D55', icon: 'social' },
+  { id: 'learning', name: 'Learning', color: '#AF52DE', icon: 'learning' },
+];
 
 const defaultUserData: UserData = {
   name: '',
@@ -121,7 +147,8 @@ const defaultUserData: UserData = {
     focusMode: false,
     workLifeSeparation: false,
     smartScheduling: true
-  }
+  },
+  customCategories: defaultCategories
 };
 
 export const [AppProvider, useApp] = createContextHook(() => {
@@ -137,6 +164,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [workTimeRemaining, setWorkTimeRemaining] = useState<string | null>(null);
   const [taskSuggestions, setTaskSuggestions] = useState<TaskSuggestion[]>([]);
   const [dismissedSuggestionsByDay, setDismissedSuggestionsByDay] = useState<Record<string, string[]>>({});
+  const hasGeneratedRecurringRef = useRef(false);
 
   const persistDismissedSuggestions = useCallback(async (value: Record<string, string[]>) => {
     try {
@@ -193,7 +221,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const savedDismissedSuggestions = await AsyncStorage.getItem('adhd-planner-dismissed-suggestions');
 
       if (savedUserData) {
-        const parsed: UserData & Partial<{ themeMode: 'system' | 'light' | 'dark'; streakData: any }> = JSON.parse(savedUserData);
+        const parsed: UserData & Partial<{ themeMode: 'system' | 'light' | 'dark'; streakData: any; customCategories: TaskCategory[] }> = JSON.parse(savedUserData);
         if (!parsed.themeMode) {
           parsed.themeMode = 'system';
         }
@@ -203,10 +231,14 @@ export const [AppProvider, useApp] = createContextHook(() => {
         if (!parsed.streakData) {
           parsed.streakData = defaultUserData.streakData;
         }
+        if (!parsed.customCategories) {
+          parsed.customCategories = defaultCategories;
+        }
         setUserData(parsed as UserData);
 
         if (savedTasks) {
-          setTasks(JSON.parse(savedTasks));
+          const loadedTasks = JSON.parse(savedTasks);
+          setTasks(loadedTasks);
         }
 
         if (savedDismissedSuggestions) {
@@ -251,6 +283,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
       setIsLoading(false);
     }
   }, []);
+
+  // Generate recurring tasks on mount
+  useEffect(() => {
+    if (!isLoading && userData.name && !hasGeneratedRecurringRef.current && (tasks.morning.length + tasks.afternoon.length + tasks.evening.length > 0)) {
+      hasGeneratedRecurringRef.current = true;
+      generateRecurringTasks(tasks, userData);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, userData.name]);
 
   // Load data on mount
   useEffect(() => {
@@ -423,8 +464,88 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, [userData, isWorkTime, dismissedSuggestionsByDay]);
 
+  const generateRecurringTasks = useCallback(async (currentTasks: Tasks, currentUserData: UserData) => {
+    const today = new Date();
+    const todayKey = today.toISOString().split('T')[0];
+    const allTasks = Object.values(currentTasks).flat();
+    
+    const recurringTasks = allTasks.filter(t => t.recurrence && t.recurrence.type !== 'none' && !t.parentTaskId);
+    
+    let needsUpdate = false;
+    const updatedTasks = { ...currentTasks };
+
+    for (const recurringTask of recurringTasks) {
+      const lastCreatedTasks = allTasks.filter(t => t.parentTaskId === recurringTask.id);
+      const lastCreatedDate = lastCreatedTasks.length > 0 
+        ? new Date(Math.max(...lastCreatedTasks.map(t => new Date(t.createdAt).getTime())))
+        : new Date(recurringTask.createdAt);
+      
+      const shouldCreate = checkShouldCreateRecurring(recurringTask, lastCreatedDate, today);
+      
+      if (shouldCreate) {
+        const timeBlock = findTaskTimeBlock(recurringTask.id, currentTasks);
+        if (timeBlock) {
+          const newTask: Task = {
+            ...recurringTask,
+            id: Date.now() + Math.random(),
+            completed: false,
+            completedAt: undefined,
+            createdAt: todayKey,
+            parentTaskId: recurringTask.id,
+          };
+          updatedTasks[timeBlock] = [...updatedTasks[timeBlock], newTask];
+          needsUpdate = true;
+          await new Promise(resolve => setTimeout(resolve, 5));
+        }
+      }
+    }
+
+    if (needsUpdate) {
+      saveTasks(updatedTasks);
+    }
+  }, [saveTasks]);
+
+  const checkShouldCreateRecurring = (task: Task, lastCreatedDate: Date, today: Date): boolean => {
+    if (!task.recurrence || task.recurrence.type === 'none') return false;
+    
+    const lastDateKey = lastCreatedDate.toISOString().split('T')[0];
+    const todayKey = today.toISOString().split('T')[0];
+    
+    if (lastDateKey === todayKey) return false;
+
+    const { type, daysOfWeek, interval = 1 } = task.recurrence;
+
+    if (type === 'daily') {
+      const daysDiff = Math.floor((today.getTime() - lastCreatedDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysDiff >= interval;
+    }
+
+    if (type === 'weekly') {
+      if (!daysOfWeek || daysOfWeek.length === 0) return false;
+      const todayDayOfWeek = today.getDay();
+      return daysOfWeek.includes(todayDayOfWeek);
+    }
+
+    if (type === 'monthly') {
+      const lastDay = lastCreatedDate.getDate();
+      const todayDay = today.getDate();
+      return todayDay === lastDay && lastCreatedDate.getMonth() !== today.getMonth();
+    }
+
+    return false;
+  };
+
+  const findTaskTimeBlock = (taskId: number, currentTasks: Tasks): keyof Tasks | null => {
+    for (const [block, blockTasks] of Object.entries(currentTasks)) {
+      if (blockTasks.some((t: Task) => t.id === taskId)) {
+        return block as keyof Tasks;
+      }
+    }
+    return null;
+  };
+
   // Add task
-  const addTask = useCallback((timeBlock: keyof Tasks, text: string, suggestion?: TaskSuggestion) => {
+  const addTask = useCallback((timeBlock: keyof Tasks, text: string, suggestion?: TaskSuggestion, recurrence?: RecurrencePattern) => {
     const newTask: Task = {
       id: Date.now(),
       text: text.trim(),
@@ -433,7 +554,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       energy: suggestion?.energy || 'medium',
       estimated: 30,
       category: suggestion?.category === 'work' ? 'work' : (isWorkTime ? 'work' : 'personal'),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      recurrence: recurrence || { type: 'none' },
     };
 
     const newTasks = {
@@ -527,6 +649,16 @@ export const [AppProvider, useApp] = createContextHook(() => {
     await AsyncStorage.setItem('last-checkin-date', new Date().toDateString());
   }, [saveUserData]);
 
+  const addCategory = useCallback(async (category: TaskCategory) => {
+    const updated = [...userData.customCategories, category];
+    await saveUserData({ customCategories: updated });
+  }, [userData.customCategories, saveUserData]);
+
+  const deleteCategory = useCallback(async (categoryId: string) => {
+    const updated = userData.customCategories.filter(c => c.id !== categoryId);
+    await saveUserData({ customCategories: updated });
+  }, [userData.customCategories, saveUserData]);
+
   return useMemo(() => ({
     userData,
     effectiveTheme,
@@ -549,7 +681,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
     deleteTask,
     setMood,
     loadData,
-    dismissSuggestionForToday
+    dismissSuggestionForToday,
+    addCategory,
+    deleteCategory,
+    generateRecurringTasks
   }), [
     userData,
     effectiveTheme,
@@ -572,6 +707,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     deleteTask,
     setMood,
     loadData,
-    dismissSuggestionForToday
+    dismissSuggestionForToday,
+    addCategory,
+    deleteCategory,
+    generateRecurringTasks
   ]);
 });
