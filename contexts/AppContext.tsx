@@ -58,6 +58,12 @@ export interface UserData {
   bodyDoublingActive: boolean;
   brainDumpHistory: Record<string, string>;
   brainDumpTitleHistory: Record<string, string>;
+  streakData: {
+    currentStreak: number;
+    longestStreak: number;
+    lastCompletionDate: string | null;
+    completionHistory: Record<string, number>;
+  };
   preferences: {
     notifications: boolean;
     autoSave: boolean;
@@ -102,6 +108,12 @@ const defaultUserData: UserData = {
   bodyDoublingActive: false,
   brainDumpHistory: {},
   brainDumpTitleHistory: {},
+  streakData: {
+    currentStreak: 0,
+    longestStreak: 0,
+    lastCompletionDate: null,
+    completionHistory: {}
+  },
   preferences: {
     notifications: true,
     autoSave: true,
@@ -181,12 +193,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const savedDismissedSuggestions = await AsyncStorage.getItem('adhd-planner-dismissed-suggestions');
 
       if (savedUserData) {
-        const parsed: UserData & Partial<{ themeMode: 'system' | 'light' | 'dark' }> = JSON.parse(savedUserData);
+        const parsed: UserData & Partial<{ themeMode: 'system' | 'light' | 'dark'; streakData: any }> = JSON.parse(savedUserData);
         if (!parsed.themeMode) {
           parsed.themeMode = 'system';
         }
         if (parsed.themeMode === 'system') {
           parsed.theme = (Appearance.getColorScheme() as 'light' | 'dark') ?? 'light';
+        }
+        if (!parsed.streakData) {
+          parsed.streakData = defaultUserData.streakData;
         }
         setUserData(parsed as UserData);
 
@@ -431,6 +446,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   // Toggle task completion
   const toggleTaskComplete = useCallback((timeBlock: keyof Tasks, taskId: number) => {
     const nowIso = new Date().toISOString();
+    const todayKey = new Date().toISOString().split('T')[0];
 
     const newTasks: Tasks = {
       ...tasks,
@@ -447,7 +463,43 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
     console.log('toggleTaskComplete', { timeBlock, taskId });
     saveTasks(newTasks);
-  }, [tasks, saveTasks]);
+
+    // Update streak when completing a task
+    const allTasks = Object.values(newTasks).flat();
+    const todayCompleted = allTasks.filter(t => t.completed && t.completedAt?.startsWith(todayKey)).length;
+    
+    if (todayCompleted > 0) {
+      const lastDate = userData.streakData.lastCompletionDate;
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayKey = yesterday.toISOString().split('T')[0];
+      
+      let newStreak = userData.streakData.currentStreak;
+      
+      if (!lastDate || lastDate === todayKey) {
+        // Same day or first time
+        newStreak = lastDate === todayKey ? userData.streakData.currentStreak : 1;
+      } else if (lastDate === yesterdayKey) {
+        // Yesterday - continue streak
+        newStreak = userData.streakData.currentStreak + 1;
+      } else {
+        // Broken streak
+        newStreak = 1;
+      }
+      
+      const newStreakData = {
+        currentStreak: newStreak,
+        longestStreak: Math.max(newStreak, userData.streakData.longestStreak),
+        lastCompletionDate: todayKey,
+        completionHistory: {
+          ...userData.streakData.completionHistory,
+          [todayKey]: todayCompleted
+        }
+      };
+      
+      saveUserData({ streakData: newStreakData });
+    }
+  }, [tasks, saveTasks, userData.streakData, saveUserData]);
 
   // Update task
   const updateTask = useCallback((timeBlock: keyof Tasks, taskId: number, updates: Partial<Task>) => {

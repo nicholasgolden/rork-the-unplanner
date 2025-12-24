@@ -32,6 +32,7 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  Flame,
 } from 'lucide-react-native';
 import { useApp } from '@/contexts/AppContext';
 
@@ -48,12 +49,10 @@ export default function TasksScreen() {
     evening: false,
   });
   const scrollRef = useRef<ScrollView | null>(null);
-  const morningRef = useRef<View | null>(null);
-  const afternoonRef = useRef<View | null>(null);
-  const eveningRef = useRef<View | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [blockPositions, setBlockPositions] = useState<{ morning: number; afternoon: number; evening: number }>({ morning: 0, afternoon: 0, evening: 0 });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const isLightTheme = effectiveTheme === 'light';
   const tabBarHeight = useMemo(() => 84 + insets.bottom, [insets.bottom]);
@@ -480,6 +479,21 @@ export default function TasksScreen() {
       shadowRadius: 8,
       elevation: 8,
     },
+    searchContainer: {
+      marginHorizontal: 20,
+      marginBottom: 16,
+    },
+    searchInput: {
+      backgroundColor: Platform.OS === 'ios' ? colors.glass.tertiary : colors.glass.background,
+      borderRadius: 16,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      fontSize: 16,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.border,
+      fontWeight: '500',
+    },
     // Glass morphism styles
     glassOverlay: {
       position: 'absolute',
@@ -579,8 +593,11 @@ export default function TasksScreen() {
   const renderTaskBlock = (timeBlock: TimeBlock) => {
     const config = timeBlockConfig[timeBlock];
     const blockTasks = tasks[timeBlock] || [];
-    const incompleteTasks = blockTasks.filter(t => !t.completed);
-    const completedTodayTasks = blockTasks.filter(t => t.completed && isTodayIso(t.completedAt));
+    const filteredTasks = searchQuery.trim() 
+      ? blockTasks.filter(t => t.text.toLowerCase().includes(searchQuery.toLowerCase()))
+      : blockTasks;
+    const incompleteTasks = filteredTasks.filter(t => !t.completed);
+    const completedTodayTasks = filteredTasks.filter(t => t.completed && isTodayIso(t.completedAt));
 
     const completedCount = blockTasks.filter(t => t.completed).length;
     const progress = blockTasks.length > 0 ? (completedCount / blockTasks.length) * 100 : 0;
@@ -589,7 +606,6 @@ export default function TasksScreen() {
       <View
         style={styles.taskBlock}
         key={timeBlock}
-        ref={timeBlock === 'morning' ? morningRef : timeBlock === 'afternoon' ? afternoonRef : eveningRef}
         onLayout={(event) => {
           const { y } = event.nativeEvent.layout;
           setBlockPositions(prev => ({ ...prev, [timeBlock]: y }));
@@ -1093,24 +1109,42 @@ export default function TasksScreen() {
           <View style={styles.header}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <Text style={[styles.greeting, { flex: 1 }]}>Welcome back, {userData.name || 'Friend'}</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  console.log('open completed-tasks');
-                  router.push('/completed-tasks' as any);
-                }}
-                activeOpacity={0.8}
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  borderRadius: 14,
-                  backgroundColor: colors.glass.background,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-                testID="open-completed-tasks"
-              >
-                <CheckCircle2 size={18} color={colors.success} strokeWidth={2.5} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {userData.streakData.currentStreak > 0 && (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    borderRadius: 14,
+                    backgroundColor: colors.glass.primary,
+                    borderWidth: 1,
+                    borderColor: colors.primary,
+                  }}>
+                    <Flame size={18} color={colors.primary} strokeWidth={2.5} />
+                    <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 15 }}>{userData.streakData.currentStreak}</Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  onPress={() => {
+                    console.log('open completed-tasks');
+                    router.push('/completed-tasks' as any);
+                  }}
+                  activeOpacity={0.8}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    borderRadius: 14,
+                    backgroundColor: colors.glass.background,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                  testID="open-completed-tasks"
+                >
+                  <CheckCircle2 size={18} color={colors.success} strokeWidth={2.5} />
+                </TouchableOpacity>
+              </View>
             </View>
             {Platform.OS === 'ios' ? (
               <BlurView
@@ -1215,6 +1249,18 @@ export default function TasksScreen() {
                 </ScrollView>
               </View>
             )
+          )}
+
+          {getTotalCount() > 5 && (
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search tasks..."
+                placeholderTextColor={colors.textTertiary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
           )}
 
           <KeyboardAvoidingView
