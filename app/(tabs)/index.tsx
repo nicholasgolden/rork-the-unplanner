@@ -11,7 +11,6 @@ import {
   Platform,
   Alert,
   RefreshControl,
-  findNodeHandle,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -54,6 +53,7 @@ export default function TasksScreen() {
   const eveningRef = useRef<View | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [blockPositions, setBlockPositions] = useState<{ morning: number; afternoon: number; evening: number }>({ morning: 0, afternoon: 0, evening: 0 });
 
   const isLightTheme = effectiveTheme === 'light';
   const tabBarHeight = useMemo(() => 84 + insets.bottom, [insets.bottom]);
@@ -535,32 +535,14 @@ export default function TasksScreen() {
   };
 
   const scrollToTimeBlock = useCallback((timeBlock: TimeBlock) => {
-    const ref = timeBlock === 'morning' ? morningRef : timeBlock === 'afternoon' ? afternoonRef : eveningRef;
-    if (!ref.current || !scrollRef.current) return;
+    if (!scrollRef.current) return;
 
-    try {
-      const scrollNodeHandle = findNodeHandle(scrollRef.current);
-      const targetNodeHandle = findNodeHandle(ref.current);
-      
-      if (!scrollNodeHandle || !targetNodeHandle) {
-        console.error('scrollToTimeBlock: missing node handles', { scrollNodeHandle, targetNodeHandle });
-        return;
-      }
-
-      ref.current.measureLayout(
-        scrollNodeHandle,
-        (_x, y) => {
-          console.log('scrollToTimeBlock', { timeBlock, y });
-          scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
-        },
-        () => {
-          console.error('scrollToTimeBlock measureLayout error');
-        }
-      );
-    } catch (e) {
-      console.error('scrollToTimeBlock error', e);
+    const y = blockPositions[timeBlock];
+    if (y > 0) {
+      console.log('scrollToTimeBlock', { timeBlock, y });
+      scrollRef.current.scrollTo({ y: Math.max(0, y - 16), animated: true });
     }
-  }, []);
+  }, [blockPositions]);
 
   const handleAddSuggestion = useCallback(async (suggestion: { timeBlock: string; text: string }) => {
     const timeBlock = (suggestion.timeBlock === 'any' ? 'afternoon' : suggestion.timeBlock) as TimeBlock;
@@ -608,6 +590,10 @@ export default function TasksScreen() {
         style={styles.taskBlock}
         key={timeBlock}
         ref={timeBlock === 'morning' ? morningRef : timeBlock === 'afternoon' ? afternoonRef : eveningRef}
+        onLayout={(event) => {
+          const { y } = event.nativeEvent.layout;
+          setBlockPositions(prev => ({ ...prev, [timeBlock]: y }));
+        }}
         testID={`task-block-${timeBlock}`}
       >
         {Platform.OS === 'ios' ? (
